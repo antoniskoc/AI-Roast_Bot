@@ -1,6 +1,7 @@
 
 from fbchat_muqit import Client, EventType, Message, ThreadType
-from roast_generator import generate_roast
+from ai_generator import generate_ai_roast
+
 
 
 TARGET_THREAD_ID = "1463018129078170"
@@ -28,17 +29,29 @@ async def on_message(message: Message):
     print("TARGET USER DETECTED")
     
     
-    if (message.text or "").strip() != "!roastbot test":
+    text = (message.text or "").strip()
+    command = "!roastbot_ai "
+    
+    if not text.startswith(command):
         return
     
-    roast = generate_roast()
+    prompt = text[len(command):].strip()
+    
+    if not prompt:
+        return
+    try:
+        roast= await generate_ai_roast(prompt)
+    except Exception as error:
+        print(f"AI error: {type(error).__name__}")
+        return
+    
     sent_id = await client.send_message(
         text=roast,
         thread_id=message.thread_id
     )
-
+    
     print(f"Sent message ID: {sent_id}")
-
+    
     
     
 if __name__ == "__main__":
