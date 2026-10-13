@@ -1,5 +1,7 @@
 
 from fbchat_muqit import Client, EventType, Message, ThreadType
+from roast_generator import generate_roast
+
 
 TARGET_THREAD_ID = "1463018129078170"
 TARGET_USER_ID = "100012027947618"  #for now my fb id for the test group
@@ -28,9 +30,10 @@ async def on_message(message: Message):
     
     if (message.text or "").strip() != "!roastbot test":
         return
-
+    
+    roast = generate_roast()
     sent_id = await client.send_message(
-        text="RoastBot działa! Pierwsza automatyczna wiadomość 🤖",
+        text=roast,
         thread_id=message.thread_id
     )
 
