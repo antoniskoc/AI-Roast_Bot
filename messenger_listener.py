@@ -1,21 +1,43 @@
 
 from fbchat_muqit import Client, EventType, Message, ThreadType
 from ai_generator import generate_ai_roast
+import time 
+import os
+
+from dotenv import load_dotenv
 
 
+load_dotenv()
+TARGET_THREAD_ID = os.getenv("TARGET_THREAD_ID")
+TARGET_USER_ID = os.getenv("TARGET_USER_ID")
 
-TARGET_THREAD_ID = "1463018129078170"
-TARGET_USER_ID = "100012027947618"  #for now my fb id for the test group
+
+if not TARGET_THREAD_ID:
+    raise RuntimeError ( " Missing TARGET_THREAD_ID in .env")
+
+if not TARGET_USER_ID:
+    raise RuntimeError ( " Missing TARGET_USER_ID in .env")
+
+
+COOLDOWN_SECONDS = 30       
+
+last_roast_at = 0.0
+is_generating = False
+
 
 client = Client(cookies_file_path="cookies/session.json")
 
 @client.event(EventType.MESSAGE)
 async def on_message(message: Message):
+    global last_roast_at, is_generating
+    
+    
     if message.thread_type != ThreadType.GROUP:
         return
 
     if str(message.sender_id) == str(client.uid):
         return
+    
 
     print(f"Group ID: {message.thread_id}")
     print(f"Sender ID: {message.sender_id}")
@@ -23,6 +45,7 @@ async def on_message(message: Message):
     if str(message.thread_id) != TARGET_THREAD_ID:
         return
 
+    print(f"Message sender ID: {message.sender_id}")
     if str(message.sender_id) != TARGET_USER_ID:
         return
 
@@ -30,31 +53,48 @@ async def on_message(message: Message):
     
     
     text = (message.text or "").strip()
-    command = "!roastbot_ai "
     
-    if not text.startswith(command):
+    if not text:
         return
     
-    prompt = text[len(command):].strip()
-    
-    if not prompt:
+    if is_generating:
+        print("AI is already generating! ")
         return
+    
+    current_time = time.monotonic()
+    
+    if current_time - last_roast_at < COOLDOWN_SECONDS:
+        print("Cooldown active! Skipping message.")
+        return
+    is_generating=True
+    
     try:
-        roast= await generate_ai_roast(prompt)
+        print("GENERATING AI ROAST")
+        
+        roast = await generate_ai_roast(text[:500])    
+    
+        if not roast.strip():
+         print("AI returned empty response.")
+         return
+    
+        sent_id = await client.send_message(
+         text=roast,
+         thread_id=message.thread_id
+         )
+        print(f"Sent message ID: {sent_id}")
+    
     except Exception as error:
         print(f"AI error: {type(error).__name__}")
         return
-    
-    sent_id = await client.send_message(
-        text=roast,
-        thread_id=message.thread_id
-    )
-    
-    print(f"Sent message ID: {sent_id}")
+    finally:
+        last_roast_at= time.monotonic()
+        is_generating=False
+        
     
     
     
-if __name__ == "__main__":
-    print("Starting Messenger listener...")
-    client.run()
+    
+    
+    
+
     
